@@ -10,7 +10,11 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-const hasFirebaseKeys = firebaseConfig.apiKey && firebaseConfig.projectId;
+const hasFirebaseKeys = 
+  firebaseConfig.apiKey && 
+  firebaseConfig.projectId && 
+  !firebaseConfig.apiKey.includes('your-') && 
+  !firebaseConfig.projectId.includes('your-');
 
 export const isFirebaseMock = !hasFirebaseKeys;
 

@@ -4,7 +4,11 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 // Fallback Mock Client when keys are missing or invalid
-export const isMockMode = !supabaseUrl || !supabaseAnonKey;
+export const isMockMode = 
+  !supabaseUrl || 
+  !supabaseAnonKey || 
+  supabaseUrl.includes('your-project-id') || 
+  supabaseAnonKey.includes('your-supabase-anon-key');
 
 export const supabase = !isMockMode 
   ? createClient(supabaseUrl, supabaseAnonKey)
