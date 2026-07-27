@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Zeeshans</string>
+    <string name="title_activity_main">Zeeshans</string>
+    <string name="package_name">com.zeeshans.customerapp</string>
+    <string name="custom_url_scheme">com.zeeshans.customerapp</string>
+</resources>

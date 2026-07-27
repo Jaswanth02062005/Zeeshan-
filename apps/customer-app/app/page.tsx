@@ -90,8 +90,9 @@ export default function CustomerApp() {
         if (firebaseUser) {
           setUser(firebaseUser);
           // Check address
+          const phone = firebaseUser.phoneNumber || '';
           const savedProfiles = MockDatabase.getStorage<Record<string, { name: string; address: string }>>('mock_user_profiles', {});
-          const userProfile = savedProfiles[firebaseUser.phoneNumber];
+          const userProfile = phone ? savedProfiles[phone] : null;
           if (!userProfile?.address) {
             setShowAddressSetup(true);
           } else {
@@ -100,7 +101,7 @@ export default function CustomerApp() {
           }
           const savedOrders = MockDatabase.getOrders();
           const pendingOrder = savedOrders.find(
-            (o: any) => o.customer_phone === firebaseUser.phoneNumber && 
+            (o: any) => o.customer_phone === phone && 
             !['COMPLETED', 'CANCELLED', 'REJECTED'].includes(o.status)
           );
           if (pendingOrder) {
