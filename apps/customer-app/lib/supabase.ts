@@ -12,17 +12,55 @@ export const supabase = !isMockMode
 
 // Mock implementation of local storage-backed state to simulate Database & Realtime updates
 export class MockDatabase {
+  static initSync() {
+    if (typeof window === 'undefined') return;
+    
+    const sync = async () => {
+      try {
+        const res = await fetch('http://localhost:3001/api/mock-db');
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        for (const key of Object.keys(data)) {
+          const localStr = localStorage.getItem(key);
+          const remoteStr = JSON.stringify(data[key]);
+          if (localStr !== remoteStr) {
+            localStorage.setItem(key, remoteStr);
+            window.dispatchEvent(new CustomEvent('mock-db-update', { 
+              detail: { key, value: data[key] } 
+            }));
+          }
+        }
+      } catch (e) {
+        // Ignore errors
+      }
+    };
+    
+    sync();
+    const interval = setInterval(sync, 1500);
+    return () => clearInterval(interval);
+  }
+
   static getStorage<T>(key: string, defaultValue: T): T {
     if (typeof window === 'undefined') return defaultValue;
     const item = localStorage.getItem(key);
     return item ? JSON.parse(item) : defaultValue;
   }
 
-  static setStorage<T>(key: string, value: T) {
+  static async setStorage<T>(key: string, value: T) {
     if (typeof window === 'undefined') return;
     localStorage.setItem(key, JSON.stringify(value));
-    // Trigger custom event for realtime subscription simulation
     window.dispatchEvent(new CustomEvent('mock-db-update', { detail: { key, value } }));
+
+    try {
+      await fetch('http://localhost:3001/api/mock-db', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key, value })
+      });
+    } catch (e) {
+      console.error('Failed to sync to mock server:', e);
+    }
   }
 
   static getCategories() {
@@ -119,4 +157,8 @@ export class MockDatabase {
     window.addEventListener('mock-db-update', listener);
     return () => window.removeEventListener('mock-db-update', listener);
   }
+}
+
+if (typeof window !== 'undefined') {
+  MockDatabase.initSync();
 }

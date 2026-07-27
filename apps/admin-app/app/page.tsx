@@ -29,7 +29,11 @@ export default function AdminDashboard() {
   
   // Authentication & Navigation
   const [authenticated, setAuthenticated] = useState(false);
-  const [activeTab, setActiveTab] = useState<'orders' | 'menu' | 'categories'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'menu' | 'categories' | 'all-orders' | 'users'>('orders');
+  const [selectedLogDate, setSelectedLogDate] = useState(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  });
 
   // Categories & Menu Items State
   const [categories, setCategories] = useState<any[]>([]);
@@ -72,6 +76,22 @@ export default function AdminDashboard() {
     if (!isMockMode) {
       fetchLiveDb();
     }
+  }, []);
+
+  // Listen for realtime menu & category updates in mock mode
+  useEffect(() => {
+    if (!isMockMode) return;
+
+    const listener = (event: any) => {
+      if (event.detail.key === 'mock_categories') {
+        setCategories(event.detail.value);
+      }
+      if (event.detail.key === 'mock_menu_items') {
+        setMenuItems(event.detail.value);
+      }
+    };
+    window.addEventListener('mock-db-update', listener);
+    return () => window.removeEventListener('mock-db-update', listener);
   }, []);
 
   const fetchLiveDb = async () => {
@@ -246,6 +266,22 @@ export default function AdminDashboard() {
     setIsEditingItem(false);
   };
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      alert("Image size should be less than 2MB");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setItemForm(prev => ({ ...prev, image_url: reader.result as string }));
+    };
+    reader.readAsDataURL(file);
+  };
+
   // Actions: Orders Acceptance & Fulfillment State Transitions
   const handleUpdateOrderStatus = (orderId: string, nextStatus: string) => {
     const updatedOrders = orders.map(o => 
@@ -334,6 +370,22 @@ export default function AdminDashboard() {
           Categories
           {activeTab === 'categories' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-amber-500" />}
         </button>
+
+        <button
+          onClick={() => setActiveTab('all-orders')}
+          className={`py-4 text-xs font-bold uppercase tracking-wider relative transition-colors ${activeTab === 'all-orders' ? 'text-amber-500' : 'text-zinc-500 hover:text-zinc-300'}`}
+        >
+          Orders
+          {activeTab === 'all-orders' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-amber-500" />}
+        </button>
+
+        <button
+          onClick={() => setActiveTab('users')}
+          className={`py-4 text-xs font-bold uppercase tracking-wider relative transition-colors ${activeTab === 'users' ? 'text-amber-500' : 'text-zinc-500 hover:text-zinc-300'}`}
+        >
+          Users & Carts
+          {activeTab === 'users' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-amber-500" />}
+        </button>
       </div>
 
       {/* WORKSPACE CONTENT */}
@@ -361,10 +413,15 @@ export default function AdminDashboard() {
                     <div key={order.id} className="glass p-5 rounded-2xl border border-red-500/20 space-y-4 animate-pulse">
                       <div className="flex items-start justify-between">
                         <div>
-                          <h4 className="font-bold text-sm text-white">Phone: {order.customer_phone}</h4>
-                          <span className="text-[10px] text-zinc-500">{new Date(order.created_at).toLocaleTimeString()}</span>
+                          <h4 className="font-extrabold text-sm text-white">{order.customer_name || 'Guest User'}</h4>
+                          <span className="text-[11px] font-semibold text-amber-500">{order.customer_phone}</span>
+                          <p className="text-[10px] text-zinc-500 mt-0.5">{new Date(order.created_at).toLocaleTimeString()}</p>
                         </div>
                         <span className="text-sm font-extrabold text-amber-500">₹{parseFloat(order.total_amount).toFixed(2)}</span>
+                      </div>
+
+                      <div className="text-[11px] text-zinc-400 border-l border-zinc-800 pl-2 leading-relaxed">
+                        <strong>Address:</strong> {order.customer_address || 'No address provided'}
                       </div>
 
                       {/* Items */}
@@ -418,14 +475,19 @@ export default function AdminDashboard() {
                     <div key={order.id} className="glass p-5 rounded-2xl border border-zinc-800 space-y-4">
                       <div className="flex items-start justify-between">
                         <div>
-                          <h4 className="font-bold text-sm text-white">ID: {order.id}</h4>
+                          <h4 className="font-extrabold text-sm text-white">{order.customer_name || 'Guest User'}</h4>
+                          <span className="text-[11px] font-semibold text-zinc-400">{order.customer_phone}</span>
                           <div className="flex gap-2 mt-1">
-                            <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${order.status === 'ACCEPTED' ? 'bg-zinc-800 text-zinc-400' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}`}>
-                              {order.status === 'ACCEPTED' ? 'Awaiting Payment' : 'Paid & Approved'}
+                            <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${order.payment_method === 'COD' ? 'bg-zinc-800 text-amber-500' : (order.status === 'ACCEPTED' ? 'bg-zinc-800 text-zinc-400' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20')}`}>
+                              {order.payment_method === 'COD' ? 'COD (Pay on Delivery)' : (order.status === 'ACCEPTED' ? 'Awaiting Payment' : 'Paid & Approved')}
                             </span>
                           </div>
                         </div>
                         <span className="text-sm font-extrabold text-white">₹{parseFloat(order.total_amount).toFixed(2)}</span>
+                      </div>
+
+                      <div className="text-[11px] text-zinc-400 border-l border-zinc-800 pl-2 leading-relaxed">
+                        <strong>Address:</strong> {order.customer_address || 'No address provided'}
                       </div>
 
                       <div className="space-y-1 text-xs text-zinc-400">
@@ -440,9 +502,10 @@ export default function AdminDashboard() {
                         {order.status !== 'PREPARING' ? (
                           <button
                             onClick={() => handleUpdateOrderStatus(order.id, 'PREPARING')}
-                            className="w-full bg-amber-500 hover:bg-amber-600 text-black text-xs font-bold py-2 rounded-lg transition-colors flex items-center justify-center gap-1"
+                            disabled={order.payment_method === 'ONLINE' && order.status === 'ACCEPTED'}
+                            className="w-full bg-amber-500 hover:bg-amber-600 disabled:bg-zinc-800 disabled:text-zinc-600 text-black text-xs font-bold py-2 rounded-lg transition-colors flex items-center justify-center gap-1"
                           >
-                            Start Cooking
+                            {order.payment_method === 'ONLINE' && order.status === 'ACCEPTED' ? 'Awaiting Online Payment' : 'Start Cooking'}
                           </button>
                         ) : (
                           <button
@@ -476,7 +539,10 @@ export default function AdminDashboard() {
                   orders.filter(o => ['READY_FOR_PICKUP', 'DELIVERING', 'COMPLETED', 'REJECTED', 'CANCELLED'].includes(o.status)).map((order) => (
                     <div key={order.id} className="glass p-4 rounded-2xl border border-zinc-800/50 space-y-3 opacity-60">
                       <div className="flex justify-between items-center text-xs">
-                        <span className="font-bold text-zinc-300">ID: {order.id}</span>
+                        <div>
+                          <h4 className="font-extrabold text-sm text-zinc-800">{order.customer_name || 'Guest User'}</h4>
+                          <span className="text-[10px] text-zinc-500">{order.customer_phone}</span>
+                        </div>
                         <span className={`px-2 py-0.5 rounded text-[8px] font-bold ${['COMPLETED', 'READY_FOR_PICKUP'].includes(order.status) ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
                           {order.status}
                         </span>
@@ -565,13 +631,48 @@ export default function AdminDashboard() {
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-semibold text-zinc-400 mb-1">Image URL</label>
+                  <label className="block text-[10px] font-semibold text-zinc-400 mb-2">Item Image</label>
+                  
+                  {itemForm.image_url ? (
+                    <div className="relative group rounded-xl overflow-hidden border border-zinc-800 bg-[#121215] h-32 flex items-center justify-center">
+                      <img 
+                        src={itemForm.image_url} 
+                        alt="Preview" 
+                        className="w-full h-full object-cover" 
+                      />
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                        <label 
+                          htmlFor="item-image-upload" 
+                          className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-black text-[10px] font-bold rounded-lg cursor-pointer transition-colors"
+                        >
+                          Change
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setItemForm({ ...itemForm, image_url: '' })}
+                          className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/40 text-red-400 text-[10px] font-bold rounded-lg transition-colors border border-red-500/30"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <label 
+                      htmlFor="item-image-upload" 
+                      className="border-2 border-dashed border-zinc-850 hover:border-amber-500/50 rounded-xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all bg-[#121215]"
+                    >
+                      <Upload className="text-zinc-500" size={20} />
+                      <span className="text-[10px] font-semibold text-zinc-400">Click to upload image</span>
+                      <span className="text-[8px] text-zinc-600">Max size 2MB (PNG, JPG, WebP)</span>
+                    </label>
+                  )}
+                  
                   <input
-                    type="text"
-                    placeholder="https://images.unsplash.com/..."
-                    value={itemForm.image_url}
-                    onChange={(e) => setItemForm({ ...itemForm, image_url: e.target.value })}
-                    className="w-full bg-[#121215] border border-zinc-850 rounded-xl py-2 px-3 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
+                    type="file"
+                    id="item-image-upload"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
                   />
                 </div>
 
@@ -692,6 +793,213 @@ export default function AdminDashboard() {
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ALL ORDERS VIEW WITH DYNAMIC DATE AUDITING */}
+        {activeTab === 'all-orders' && (
+          <div className="space-y-6 max-w-5xl mx-auto">
+            {/* Header with Date picker */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-200">
+              <div>
+                <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">
+                  Daily Order Log
+                </h3>
+                <p className="text-xs text-zinc-500 mt-1">Select a calendar date to audit past orders and earnings.</p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <label className="text-xs font-bold text-zinc-500">Filter Date:</label>
+                <input
+                  type="date"
+                  value={selectedLogDate}
+                  onChange={(e) => setSelectedLogDate(e.target.value)}
+                  className="bg-white border border-zinc-300 rounded-xl px-3 py-2 text-xs text-zinc-800 focus:outline-none focus:border-amber-500/50"
+                />
+              </div>
+            </div>
+
+            {/* Filtered logs */}
+            <div className="space-y-4">
+              {(() => {
+                const filtered = orders.filter((o) => {
+                  if (!o.created_at) return false;
+                  const orderDateString = o.created_at.split('T')[0];
+                  return orderDateString === selectedLogDate;
+                });
+
+                if (filtered.length === 0) {
+                  return (
+                    <div className="text-center py-20 text-zinc-500 text-xs bg-white border border-zinc-200 rounded-2xl">
+                      No orders registered on {new Date(selectedLogDate).toLocaleDateString(undefined, { dateStyle: 'long' })}.
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {filtered.map((order) => (
+                      <div key={order.id} className="glass p-5 rounded-2xl border border-zinc-200/50 space-y-4">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="font-extrabold text-sm text-white">{order.customer_name || 'Guest User'}</h4>
+                            <span className="text-[11px] font-semibold text-zinc-500">{order.customer_phone}</span>
+                            <p className="text-[9px] text-zinc-400 mt-1 font-semibold">ID: {order.id}</p>
+                          </div>
+                          
+                          <div className="text-right">
+                            <span className="text-sm font-extrabold text-amber-500 block">₹{parseFloat(order.total_amount).toFixed(2)}</span>
+                            <span className={`inline-block px-2 py-0.5 mt-1 rounded text-[8px] font-bold uppercase tracking-wider ${['COMPLETED', 'READY_FOR_PICKUP'].includes(order.status) ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : ['REJECTED', 'CANCELLED'].includes(order.status) ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
+                              {order.status}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Customer Address Details */}
+                        <div className="text-[11px] text-zinc-400 border-l border-zinc-200 pl-2 leading-relaxed">
+                          <strong>Address:</strong> {order.customer_address || 'No address provided'}
+                        </div>
+
+                        {/* Items */}
+                        <div className="space-y-1.5 text-xs text-zinc-400 border-t border-zinc-200/40 pt-3">
+                          {order.items.map((i: any, index: number) => (
+                            <div key={index} className="flex justify-between">
+                              <span>{i.menuItem.name} <strong className="text-zinc-200">x{i.quantity}</strong></span>
+                              <span>₹{(parseFloat(i.menuItem.price) * i.quantity).toFixed(2)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        )}
+
+        {/* USERS AND ACTIVE CARTS VIEW */}
+        {activeTab === 'users' && (
+          <div className="space-y-8 max-w-6xl mx-auto text-left">
+            {/* Live active users column */}
+            <div className="space-y-4">
+              <div className="border-b border-zinc-800 pb-2 flex items-center justify-between">
+                <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                  Active Users & Live Carts
+                </h3>
+                <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded text-[10px] font-bold">
+                  {Object.keys(MockDatabase.getStorage<Record<string, any>>('mock_user_activity', {})).length} Online
+                </span>
+              </div>
+
+              {(() => {
+                const activeActivity = MockDatabase.getStorage<Record<string, { name: string; last_active: string; cart: any[]; current_tab: string }>>('mock_user_activity', {});
+                const activePhones = Object.keys(activeActivity);
+
+                if (activePhones.length === 0) {
+                  return (
+                    <div className="text-center py-12 text-zinc-600 text-xs glass rounded-2xl border border-zinc-800/30">
+                      No active users on the application right now.
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {activePhones.map((phone) => {
+                      const session = activeActivity[phone];
+                      const timeDiff = Math.round((Date.now() - new Date(session.last_active).getTime()) / 1000);
+                      const cartTotal = session.cart.reduce((sum, item) => sum + (parseFloat(item.menuItem.price) * item.quantity), 0);
+
+                      return (
+                        <div key={phone} className="glass p-5 rounded-2xl border border-zinc-800 space-y-4">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h4 className="font-extrabold text-sm text-white">{session.name || 'Guest User'}</h4>
+                              <span className="text-[10px] font-semibold text-zinc-500">{phone}</span>
+                            </div>
+                            <span className="text-[9px] px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 font-bold capitalize">
+                              Tab: {session.current_tab}
+                            </span>
+                          </div>
+
+                          <div className="text-[9px] text-zinc-500 flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                            Last Active: {timeDiff <= 5 ? 'Just now' : `${timeDiff}s ago`}
+                          </div>
+
+                          <div className="border-t border-zinc-855 pt-3 space-y-2">
+                            <div className="flex justify-between items-center text-[10px] font-bold text-zinc-400">
+                              <span>Cart Items ({session.cart.length})</span>
+                              <span>Total: ₹{cartTotal.toFixed(2)}</span>
+                            </div>
+
+                            {session.cart.length > 0 ? (
+                              <div className="bg-[#121215] p-2.5 rounded-xl border border-zinc-900 space-y-1 text-[10px] text-zinc-500">
+                                {session.cart.map((item: any, idx: number) => (
+                                  <div key={idx} className="flex justify-between">
+                                    <span>{item.menuItem.name} <strong>x{item.quantity}</strong></span>
+                                    <span>₹{(parseFloat(item.menuItem.price) * item.quantity).toFixed(2)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-[10px] text-zinc-600 italic">Basket is empty</p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Registered users directory */}
+            <div className="space-y-4 pt-4">
+              <div className="border-b border-zinc-800 pb-2">
+                <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest text-left">
+                  Registered Users Registry
+                </h3>
+              </div>
+
+              {(() => {
+                const profiles = MockDatabase.getStorage<Record<string, { name: string; address: string }>>('mock_user_profiles', {});
+                const phones = Object.keys(profiles);
+
+                if (phones.length === 0) {
+                  return (
+                    <div className="text-center py-12 text-zinc-600 text-xs glass rounded-2xl border border-zinc-800/30">
+                      No users registered in the database yet.
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="bg-[#121215]/40 rounded-2xl border border-zinc-800 overflow-hidden text-left">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="border-b border-zinc-800 text-zinc-400 bg-zinc-950/20 font-semibold">
+                          <th className="p-4">Customer Name</th>
+                          <th className="p-4">Phone Number</th>
+                          <th className="p-4">Default Delivery Address</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-850">
+                        {phones.map((phone) => (
+                          <tr key={phone} className="hover:bg-white/5 transition-colors">
+                            <td className="p-4 font-bold text-white">{profiles[phone].name || 'Guest User'}</td>
+                            <td className="p-4 text-amber-500 font-semibold">{phone}</td>
+                            <td className="p-4 text-zinc-400 truncate max-w-xs">{profiles[phone].address || 'No address saved'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )}

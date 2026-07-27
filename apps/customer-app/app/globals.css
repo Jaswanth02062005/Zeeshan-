@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 :root {
-  --background: #0d0d0e;
-  --foreground: #f4f4f6;
+  --background: #f8fafc;
+  --foreground: #0f172a;
 }
 
 body {
@@ -14,19 +14,20 @@ body {
   overflow-x: hidden;
 }
 
-/* Glassmorphism utility */
 .glass {
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.03), 0 2px 4px -2px rgb(0 0 0 / 0.03) !important;
 }
 
 .glass-dark {
-  background: rgba(10, 10, 12, 0.7);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.98) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(15, 23, 42, 0.05) !important;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.05) !important;
 }
 
 /* Hide scrollbar */
@@ -36,4 +37,146 @@ body {
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* LIGHT MODE OVERRIDES FOR HARDCODED DARK CLASSES */
+body.bg-black {
+  background-color: #cbd5e1 !important; /* Outer container frame */
+}
+.bg-\[\#0d0d0e\] {
+  background-color: #f8fafc !important;
+}
+.text-\[\#f4f4f6\] {
+  color: #0f172a !important;
+}
+.bg-\[\#0d0d0e\]\/80 {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+.border-\[\#1a1a1f\] {
+  border-color: #e2e8f0 !important;
+}
+.border-x {
+  border-color: #e2e8f0 !important;
+}
+.bg-\[\#16161b\] {
+  background-color: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+}
+.bg-\[\#1c1c24\] {
+  background-color: #f1f5f9 !important;
+}
+.border-zinc-800, .border-zinc-850, .border-zinc-900 {
+  border-color: #e2e8f0 !important;
+}
+.text-white {
+  color: #0f172a !important;
+}
+.text-zinc-200 {
+  color: #1e293b !important;
+}
+.text-zinc-300 {
+  color: #334155 !important;
+}
+.text-zinc-400 {
+  color: #475569 !important;
+}
+.text-zinc-500 {
+  color: #64748b !important;
+}
+.text-zinc-600 {
+  color: #94a3b8 !important;
+}
+.bg-zinc-900 {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+}
+.hover\:bg-zinc-800\/50:hover {
+  background-color: rgba(15, 23, 42, 0.05) !important;
+}
+input, select, textarea {
+  color: #0f172a !important;
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+}
+input::placeholder, textarea::placeholder {
+  color: #94a3b8 !important;
+}
+.bg-amber-500 {
+  background-color: #f59e0b !important;
+  color: #ffffff !important;
+}
+.bg-amber-500\/10 {
+  background-color: rgba(245, 158, 11, 0.1) !important;
+  color: #d97706 !important;
+}
+.text-amber-500 {
+  color: #d97706 !important;
+}
+.text-amber-400 {
+  color: #b45309 !important;
+}
+.bg-red-500\/10 {
+  background-color: rgba(239, 68, 68, 0.1) !important;
+}
+.border-red-500\/20 {
+  border-color: rgba(239, 68, 68, 0.2) !important;
+}
+.text-red-400 {
+  color: #dc2626 !important;
+}
+.bg-emerald-500\/10 {
+  background-color: rgba(16, 185, 129, 0.1) !important;
+}
+.border-emerald-500\/20 {
+  border-color: rgba(16, 185, 129, 0.2) !important;
+}
+.text-emerald-400 {
+  color: #059669 !important;
+}
+.bg-\[\#18181b\] {
+  background-color: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+}
+.bg-zinc-800 {
+  background-color: #f1f5f9 !important;
+  color: #475569 !important;
+}
+.divide-zinc-850 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #e2e8f0 !important;
+}
+.border-zinc-850 {
+  border-color: #e2e8f0 !important;
+}
+.bg-[#0d0d0e] {
+  background-color: #f8fafc !important;
+}
+.bg-[#09090b] {
+  background-color: #f8fafc !important;
+}
+.bg-emerald-500 {
+  background-color: #10b981 !important;
+  color: #ffffff !important;
+}
+.bg-emerald-500 .text-black, .bg-amber-500 .text-black {
+  color: #ffffff !important;
+}
+.text-emerald-500 {
+  color: #059669 !important;
+}
+.bg-zinc-950 {
+  background-color: #f1f5f9 !important;
+}
+.border-zinc-800 {
+  border-color: #e2e8f0 !important;
+}
+.bg-zinc-900\/80 {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+}
+.text-zinc-100 {
+  color: #1e293b !important;
+}
+.bg-[#0c0c0e]/90 {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-color: #e2e8f0 !important;
 }
