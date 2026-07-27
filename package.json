@@ -1,0 +1,15 @@
+{
+  "name": "zeeshans-root",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:customer": "npm run dev -w apps/customer-app",
+    "dev:admin": "npm run dev -w apps/admin-app",
+    "build:customer": "npm run build -w apps/customer-app",
+    "build:admin": "npm run build -w apps/admin-app"
+  }
+}

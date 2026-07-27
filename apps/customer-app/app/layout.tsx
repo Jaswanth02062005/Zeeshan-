@@ -1,0 +1,23 @@
+import type { Metadata } from "next";
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: "Zeeshans | Fine Dining Restaurant",
+  description: "Experience premium culinary creations and order your favorite dishes online.",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en">
+      <body className="antialiased min-h-screen flex justify-center bg-black">
+        <div className="w-full max-w-md min-h-screen bg-[#0d0d0e] text-[#f4f4f6] relative flex flex-col shadow-2xl border-x border-[#1a1a1f]">
+          {children}
+        </div>
+      </body>
+    </html>
+  );
+}
