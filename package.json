@@ -11,5 +11,8 @@
     "dev:admin": "npm run dev -w apps/admin-app",
     "build:customer": "npm run build -w apps/customer-app",
     "build:admin": "npm run build -w apps/admin-app"
+  },
+  "dependencies": {
+    "pg": "^8.22.0"
   }
 }

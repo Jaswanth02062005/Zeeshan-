@@ -50,6 +50,7 @@ export default function AdminDashboard() {
     name: '',
     description: '',
     price: '',
+    offer_price: '',
     category_id: '',
     image_url: '',
     is_available: true
@@ -182,48 +183,120 @@ export default function AdminDashboard() {
   };
 
   // Actions: Categories
-  const handleAddCategory = () => {
+  const handleAddCategory = async () => {
     if (!newCategoryName.trim()) return;
-    const newCat = {
-      id: 'cat_' + Math.random().toString(36).substr(2, 9),
-      name: newCategoryName
-    };
-    const updated = [...categories, newCat];
-    setCategories(updated);
-    MockDatabase.saveCategories(updated);
-    setNewCategoryName('');
+    if (isMockMode) {
+      const newCat = {
+        id: 'cat_' + Math.random().toString(36).substr(2, 9),
+        name: newCategoryName
+      };
+      const updated = [...categories, newCat];
+      setCategories(updated);
+      MockDatabase.saveCategories(updated);
+      setNewCategoryName('');
+    } else {
+      try {
+        const { data, error } = await supabase
+          .from('categories')
+          .insert([{ name: newCategoryName }])
+          .select()
+          .single();
+        if (error) throw error;
+        if (data) {
+          setCategories(prev => [...prev, data]);
+          setNewCategoryName('');
+        }
+      } catch (err: any) {
+        alert('Error adding category: ' + err.message);
+      }
+    }
   };
 
-  const handleDeleteCategory = (id: string) => {
-    const updated = categories.filter(c => c.id !== id);
-    setCategories(updated);
-    MockDatabase.saveCategories(updated);
+  const handleDeleteCategory = async (id: string) => {
+    if (isMockMode) {
+      const updated = categories.filter(c => c.id !== id);
+      setCategories(updated);
+      MockDatabase.saveCategories(updated);
+    } else {
+      try {
+        const { error } = await supabase
+          .from('categories')
+          .delete()
+          .eq('id', id);
+        if (error) throw error;
+        setCategories(prev => prev.filter(c => c.id !== id));
+      } catch (err: any) {
+        alert('Error deleting category: ' + err.message);
+      }
+    }
   };
 
   // Actions: Menu Items CRUD
-  const handleSaveItem = (e: React.FormEvent) => {
+  const handleSaveItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!itemForm.name || !itemForm.price || !itemForm.category_id) return;
-
-    let updatedList = [...menuItems];
     const priceNum = parseFloat(itemForm.price);
+    const offerPriceNum = itemForm.offer_price ? parseFloat(itemForm.offer_price) : null;
 
-    if (isEditingItem) {
-      updatedList = updatedList.map(item => 
-        item.id === itemForm.id ? { ...item, ...itemForm, price: priceNum } : item
-      );
+    if (isMockMode) {
+      let updatedList = [...menuItems];
+      if (isEditingItem) {
+        updatedList = updatedList.map(item => 
+          item.id === itemForm.id ? { ...item, ...itemForm, price: priceNum, offer_price: offerPriceNum } : item
+        );
+      } else {
+        const newItem = {
+          ...itemForm,
+          id: 'item_' + Math.random().toString(36).substr(2, 9),
+          price: priceNum,
+          offer_price: offerPriceNum
+        };
+        updatedList.push(newItem);
+      }
+      setMenuItems(updatedList);
+      MockDatabase.saveMenuItems(updatedList);
+      resetItemForm();
     } else {
-      const newItem = {
-        ...itemForm,
-        id: 'item_' + Math.random().toString(36).substr(2, 9),
-        price: priceNum
-      };
-      updatedList.push(newItem);
+      try {
+        if (isEditingItem) {
+          const { error } = await supabase
+            .from('menu_items')
+            .update({
+              name: itemForm.name,
+              description: itemForm.description,
+              price: priceNum,
+              offer_price: offerPriceNum,
+              category_id: itemForm.category_id,
+              image_url: itemForm.image_url,
+              is_available: itemForm.is_available
+            })
+            .eq('id', itemForm.id);
+          if (error) throw error;
+          setMenuItems(prev => prev.map(item => 
+            item.id === itemForm.id ? { ...item, ...itemForm, price: priceNum, offer_price: offerPriceNum } : item
+          ));
+        } else {
+          const { data, error } = await supabase
+            .from('menu_items')
+            .insert([{
+              name: itemForm.name,
+              description: itemForm.description,
+              price: priceNum,
+              offer_price: offerPriceNum,
+              category_id: itemForm.category_id,
+              image_url: itemForm.image_url,
+              is_available: itemForm.is_available
+            }])
+            .select()
+            .single();
+          if (error) throw error;
+          if (data) setMenuItems(prev => [...prev, data]);
+        }
+        resetItemForm();
+      } catch (err: any) {
+        alert('Error saving menu item: ' + err.message);
+      }
     }
-
-    setMenuItems(updatedList);
-    MockDatabase.saveMenuItems(updatedList);
-    resetItemForm();
   };
 
   const handleEditItem = (item: any) => {
@@ -232,6 +305,7 @@ export default function AdminDashboard() {
       name: item.name,
       description: item.description || '',
       price: item.price.toString(),
+      offer_price: item.offer_price !== null && item.offer_price !== undefined ? item.offer_price.toString() : '',
       category_id: item.category_id,
       image_url: item.image_url || '',
       is_available: item.is_available
@@ -239,18 +313,47 @@ export default function AdminDashboard() {
     setIsEditingItem(true);
   };
 
-  const handleDeleteItem = (id: string) => {
-    const updated = menuItems.filter(item => item.id !== id);
-    setMenuItems(updated);
-    MockDatabase.saveMenuItems(updated);
+  const handleDeleteItem = async (id: string) => {
+    if (isMockMode) {
+      const updated = menuItems.filter(item => item.id !== id);
+      setMenuItems(updated);
+      MockDatabase.saveMenuItems(updated);
+    } else {
+      try {
+        const { error } = await supabase
+          .from('menu_items')
+          .delete()
+          .eq('id', id);
+        if (error) throw error;
+        setMenuItems(prev => prev.filter(item => item.id !== id));
+      } catch (err: any) {
+        alert('Error deleting menu item: ' + err.message);
+      }
+    }
   };
 
-  const toggleAvailability = (item: any) => {
-    const updated = menuItems.map(i => 
-      i.id === item.id ? { ...i, is_available: !i.is_available } : i
-    );
-    setMenuItems(updated);
-    MockDatabase.saveMenuItems(updated);
+  const toggleAvailability = async (item: any) => {
+    const nextAvailability = !item.is_available;
+    if (isMockMode) {
+      const updated = menuItems.map(i => 
+        i.id === item.id ? { ...i, is_available: nextAvailability } : i
+      );
+      setMenuItems(updated);
+      MockDatabase.saveMenuItems(updated);
+    } else {
+      try {
+        const { error } = await supabase
+          .from('menu_items')
+          .update({ is_available: nextAvailability })
+          .eq('id', item.id);
+        if (error) throw error;
+        setMenuItems(prev => prev.map(i => 
+          i.id === item.id ? { ...i, is_available: nextAvailability } : i
+        ));
+      } catch (err: any) {
+        alert('Error updating item availability: ' + err.message);
+      }
+    }
   };
 
   const resetItemForm = () => {
@@ -259,6 +362,7 @@ export default function AdminDashboard() {
       name: '',
       description: '',
       price: '',
+      offer_price: '',
       category_id: categories[0]?.id || '',
       image_url: '',
       is_available: true
@@ -283,12 +387,27 @@ export default function AdminDashboard() {
   };
 
   // Actions: Orders Acceptance & Fulfillment State Transitions
-  const handleUpdateOrderStatus = (orderId: string, nextStatus: string) => {
-    const updatedOrders = orders.map(o => 
-      o.id === orderId ? { ...o, status: nextStatus } : o
-    );
-    setOrders(updatedOrders);
-    MockDatabase.saveOrder(updatedOrders.find(o => o.id === orderId));
+  const handleUpdateOrderStatus = async (orderId: string, nextStatus: string) => {
+    if (isMockMode) {
+      const updatedOrders = orders.map(o => 
+        o.id === orderId ? { ...o, status: nextStatus } : o
+      );
+      setOrders(updatedOrders);
+      MockDatabase.saveOrder(updatedOrders.find(o => o.id === orderId));
+    } else {
+      try {
+        const { error } = await supabase
+          .from('orders')
+          .update({ status: nextStatus })
+          .eq('id', orderId);
+        if (error) throw error;
+        setOrders(prev => prev.map(o => 
+          o.id === orderId ? { ...o, status: nextStatus } : o
+        ));
+      } catch (err: any) {
+        alert('Error updating order status: ' + err.message);
+      }
+    }
   };
 
   const handleLogout = () => {
@@ -410,17 +529,23 @@ export default function AdminDashboard() {
               <div className="space-y-4">
                 {orders.filter(o => o.status === 'PENDING_ACCEPTANCE').length > 0 ? (
                   orders.filter(o => o.status === 'PENDING_ACCEPTANCE').map((order) => (
-                    <div key={order.id} className="glass p-5 rounded-2xl border border-red-500/20 space-y-4 animate-pulse">
+                    <div key={order.id} className="glass p-5 rounded-2xl border border-red-500/35 space-y-4 transition-all duration-300 hover:border-red-500/60 shadow-lg shadow-red-500/5 relative overflow-hidden">
                       <div className="flex items-start justify-between">
                         <div>
-                          <h4 className="font-extrabold text-sm text-white">{order.customer_name || 'Guest User'}</h4>
+                          <div className="flex items-center gap-2">
+                            <span className="relative flex h-2.5 w-2.5">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                            </span>
+                            <h4 className="font-extrabold text-sm text-white">{order.customer_name || 'Guest User'}</h4>
+                          </div>
                           <span className="text-[11px] font-semibold text-amber-500">{order.customer_phone}</span>
                           <p className="text-[10px] text-zinc-500 mt-0.5">{new Date(order.created_at).toLocaleTimeString()}</p>
                         </div>
                         <span className="text-sm font-extrabold text-amber-500">₹{parseFloat(order.total_amount).toFixed(2)}</span>
                       </div>
 
-                      <div className="text-[11px] text-zinc-400 border-l border-zinc-800 pl-2 leading-relaxed">
+                      <div className="text-[11px] text-zinc-450 border-l-2 border-red-500/45 pl-2.5 leading-relaxed">
                         <strong>Address:</strong> {order.customer_address || 'No address provided'}
                       </div>
 
@@ -600,7 +725,7 @@ export default function AdminDashboard() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="block text-[10px] font-semibold text-zinc-400 mb-1">Price (₹)</label>
                     <input
@@ -611,6 +736,18 @@ export default function AdminDashboard() {
                       onChange={(e) => setItemForm({ ...itemForm, price: e.target.value })}
                       className="w-full bg-[#121215] border border-zinc-850 rounded-xl py-2 px-3 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
                       required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-semibold text-zinc-400 mb-1">Offer Price (₹)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="Optional"
+                      value={itemForm.offer_price}
+                      onChange={(e) => setItemForm({ ...itemForm, offer_price: e.target.value })}
+                      className="w-full bg-[#121215] border border-zinc-850 rounded-xl py-2 px-3 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-amber-500/50"
                     />
                   </div>
 
@@ -720,7 +857,16 @@ export default function AdminDashboard() {
                         <td className="py-3 text-zinc-400">
                           {categories.find(c => c.id === item.category_id)?.name || 'Unknown'}
                         </td>
-                        <td className="py-3 font-bold text-amber-500">₹{item.price.toFixed(2)}</td>
+                        <td className="py-3 font-bold text-amber-500">
+                          {item.offer_price !== null && item.offer_price !== undefined ? (
+                            <div className="flex items-center gap-1.5">
+                              <span className="line-through text-zinc-500 font-normal">₹{item.price.toFixed(2)}</span>
+                              <span>₹{item.offer_price.toFixed(2)}</span>
+                            </div>
+                          ) : (
+                            <span>₹{item.price.toFixed(2)}</span>
+                          )}
+                        </td>
                         <td className="py-3">
                           <button
                             onClick={() => toggleAvailability(item)}

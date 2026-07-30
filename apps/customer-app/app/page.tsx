@@ -58,6 +58,59 @@ export default function CustomerApp() {
   const [tempAddress, setTempAddress] = useState('');
   const [deliveryAddressInput, setDeliveryAddressInput] = useState('');
 
+  // User Order History & Active Order state handlers
+  const [ordersList, setOrdersList] = useState<any[]>([]);
+
+  const fetchUserOrders = async (phone: string) => {
+    if (isMockMode) {
+      const savedOrders = MockDatabase.getOrders();
+      setOrdersList(savedOrders.filter((o: any) => o.customer_phone === phone));
+    } else {
+      try {
+        const { data, error } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('customer_phone', phone)
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        if (data) setOrdersList(data);
+      } catch (err) {
+        console.error('Error fetching user orders from Supabase:', err);
+      }
+    }
+  };
+
+  const fetchActiveOrder = async (phone: string) => {
+    if (isMockMode) {
+      const savedOrders = MockDatabase.getOrders();
+      const pendingOrder = savedOrders.find(
+        (o: any) => o.customer_phone === phone && 
+        !['COMPLETED', 'CANCELLED', 'REJECTED'].includes(o.status)
+      );
+      if (pendingOrder) {
+        setActiveOrder(pendingOrder);
+        setShowTracking(true);
+      }
+    } else {
+      try {
+        const { data, error } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('customer_phone', phone)
+          .not('status', 'in', '("COMPLETED","CANCELLED","REJECTED")')
+          .order('created_at', { ascending: false })
+          .limit(1);
+        if (error) throw error;
+        if (data && data.length > 0) {
+          setActiveOrder(data[0]);
+          setShowTracking(true);
+        }
+      } catch (err) {
+        console.error('Error fetching active order:', err);
+      }
+    }
+  };
+
   // Load Menu Data and verify active sessions
   useEffect(() => {
     // Check local session
@@ -73,16 +126,9 @@ export default function CustomerApp() {
         setShowAddressSetup(false);
         setDeliveryAddressInput(userProfile.address);
       }
-      // Fetch active order if any
-      const savedOrders = MockDatabase.getOrders();
-      const pendingOrder = savedOrders.find(
-        (o: any) => o.customer_phone === savedUser.phoneNumber && 
-        !['COMPLETED', 'CANCELLED', 'REJECTED'].includes(o.status)
-      );
-      if (pendingOrder) {
-        setActiveOrder(pendingOrder);
-        setShowTracking(true);
-      }
+      // Fetch active order & history
+      fetchActiveOrder(savedUser.phoneNumber);
+      fetchUserOrders(savedUser.phoneNumber);
     }
 
     if (!isFirebaseMock && auth) {
@@ -99,14 +145,9 @@ export default function CustomerApp() {
             setShowAddressSetup(false);
             setDeliveryAddressInput(userProfile.address);
           }
-          const savedOrders = MockDatabase.getOrders();
-          const pendingOrder = savedOrders.find(
-            (o: any) => o.customer_phone === phone && 
-            !['COMPLETED', 'CANCELLED', 'REJECTED'].includes(o.status)
-          );
-          if (pendingOrder) {
-            setActiveOrder(pendingOrder);
-            setShowTracking(true);
+          if (phone) {
+            fetchActiveOrder(phone);
+            fetchUserOrders(phone);
           }
         } else {
           setUser(null);
@@ -302,15 +343,8 @@ export default function CustomerApp() {
       }
 
       // Try to re-bind any existing active orders
-      const savedOrders = MockDatabase.getOrders();
-      const pendingOrder = savedOrders.find(
-        (o: any) => o.customer_phone === loggedUser.phoneNumber && 
-        !['COMPLETED', 'CANCELLED', 'REJECTED'].includes(o.status)
-      );
-      if (pendingOrder) {
-        setActiveOrder(pendingOrder);
-        setShowTracking(true);
-      }
+      fetchActiveOrder(loggedUser.phoneNumber);
+      fetchUserOrders(loggedUser.phoneNumber);
     } catch (err: any) {
       setAuthError('Invalid verification code. Please try again.');
     } finally {
@@ -345,6 +379,7 @@ export default function CustomerApp() {
     MockAuth.logout();
     setUser(null);
     setActiveOrder(null);
+    setOrdersList([]);
     setCart([]);
   };
 
@@ -371,7 +406,12 @@ export default function CustomerApp() {
     });
   };
 
-  const cartTotal = cart.reduce((sum, item) => sum + (item.menuItem.price * item.quantity), 0);
+  const cartTotal = cart.reduce((sum, item) => {
+    const activePrice = item.menuItem.offer_price !== null && item.menuItem.offer_price !== undefined
+      ? parseFloat(item.menuItem.offer_price)
+      : parseFloat(item.menuItem.price);
+    return sum + (activePrice * item.quantity);
+  }, 0);
 
   // Order Submission
   const submitOrder = async () => {
@@ -396,20 +436,24 @@ export default function CustomerApp() {
     if (isMockMode) {
       MockDatabase.saveOrder(newOrder);
       setActiveOrder(newOrder);
+      setOrdersList(prev => [newOrder, ...prev]);
       setShowTracking(true);
       setCart([]);
       setIsCartOpen(false);
       setCheckingOut(false);
     } else {
       try {
+        const { id, ...supabaseOrder } = newOrder; // Omit client-generated 'ord_...' ID so Postgres generates a UUID!
         const { data, error } = await supabase
           .from('orders')
-          .insert([newOrder])
+          .insert([supabaseOrder])
           .select()
           .single();
 
         if (error) throw error;
-        setActiveOrder(data || newOrder);
+        const placedOrder = data || newOrder;
+        setActiveOrder(placedOrder);
+        setOrdersList(prev => [placedOrder, ...prev]);
         setShowTracking(true);
         setCart([]);
         setIsCartOpen(false);
@@ -421,14 +465,31 @@ export default function CustomerApp() {
     }
   };
 
-  const triggerPaymentMock = () => {
+  const triggerPaymentMock = async () => {
     setLoading(true);
-    setTimeout(() => {
-      const updatedOrder = { ...activeOrder, status: 'PAID', payment_id: 'pay_' + Math.random().toString(36).substr(2, 9) };
-      MockDatabase.saveOrder(updatedOrder);
-      setActiveOrder(updatedOrder);
-      setLoading(false);
-    }, 1500);
+    const payId = 'pay_' + Math.random().toString(36).substr(2, 9);
+    const updatedOrder = { ...activeOrder, status: 'PAID', payment_id: payId };
+
+    if (isMockMode) {
+      setTimeout(() => {
+        MockDatabase.saveOrder(updatedOrder);
+        setActiveOrder(updatedOrder);
+        setLoading(false);
+      }, 500);
+    } else {
+      try {
+        const { error } = await supabase
+          .from('orders')
+          .update({ status: 'PAID', payment_id: payId })
+          .eq('id', activeOrder.id);
+        if (error) throw error;
+        setActiveOrder(updatedOrder);
+      } catch (err: any) {
+        alert(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
   };
 
   // Filter Items
@@ -595,40 +656,48 @@ export default function CustomerApp() {
           </div>
 
           <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-amber-500/10 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+            <div className="w-16 h-16 bg-amber-500/10 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse border border-amber-500/25">
               <ShoppingBag size={32} />
             </div>
             <h2 className="text-xl font-bold text-white">Track Your Feast</h2>
             <p className="text-xs text-zinc-500 mt-1">Order ID: {activeOrder.id}</p>
           </div>
 
-          <div className="glass p-6 rounded-2xl border border-zinc-800 space-y-6">
+          <div className="glass p-6 rounded-2xl border border-zinc-800 space-y-6 shadow-xl">
             {/* Status Visual Tracker */}
             <div className="space-y-4">
               <div className="flex items-center gap-3">
-                <div className={`w-3 h-3 rounded-full ${['PENDING_ACCEPTANCE', 'ACCEPTED', 'PAID', 'PREPARING', 'READY_FOR_PICKUP', 'DELIVERING', 'COMPLETED'].includes(activeOrder.status) ? 'bg-amber-500 animate-ping' : 'bg-zinc-800'}`} />
-                <span className={`text-sm ${activeOrder.status === 'PENDING_ACCEPTANCE' ? 'text-amber-400 font-semibold' : 'text-zinc-400'}`}>
+                <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center ${['PENDING_ACCEPTANCE', 'ACCEPTED', 'PAID', 'PREPARING', 'READY_FOR_PICKUP', 'DELIVERING', 'COMPLETED'].includes(activeOrder.status) ? 'bg-amber-500 shadow-md shadow-amber-500/20' : 'bg-zinc-800'}`}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-black"></span>
+                </div>
+                <span className={`text-sm ${activeOrder.status === 'PENDING_ACCEPTANCE' ? 'text-amber-450 font-bold' : 'text-zinc-400'}`}>
                   Submitted & Awaiting Kitchen Approval
                 </span>
               </div>
               <div className="w-0.5 h-6 bg-zinc-800 ml-1.5" />
               <div className="flex items-center gap-3">
-                <div className={`w-3 h-3 rounded-full ${['ACCEPTED', 'PAID', 'PREPARING', 'READY_FOR_PICKUP', 'DELIVERING', 'COMPLETED'].includes(activeOrder.status) ? 'bg-amber-500' : 'bg-zinc-800'}`} />
-                <span className={`text-sm ${activeOrder.status === 'ACCEPTED' ? 'text-amber-400 font-semibold' : 'text-zinc-400'}`}>
+                <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center ${['ACCEPTED', 'PAID', 'PREPARING', 'READY_FOR_PICKUP', 'DELIVERING', 'COMPLETED'].includes(activeOrder.status) ? 'bg-amber-500 shadow-md shadow-amber-500/20' : 'bg-zinc-800'}`}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-black"></span>
+                </div>
+                <span className={`text-sm ${activeOrder.status === 'ACCEPTED' ? 'text-amber-450 font-bold' : 'text-zinc-400'}`}>
                   {activeOrder.payment_method === 'COD' ? 'Accepted (Cash on Delivery)' : 'Accepted (Awaiting Payment Processing)'}
                 </span>
               </div>
               <div className="w-0.5 h-6 bg-zinc-800 ml-1.5" />
               <div className="flex items-center gap-3">
-                <div className={`w-3 h-3 rounded-full ${['PAID', 'PREPARING', 'READY_FOR_PICKUP', 'DELIVERING', 'COMPLETED'].includes(activeOrder.status) ? 'bg-amber-500' : 'bg-zinc-800'}`} />
-                <span className={`text-sm ${activeOrder.status === 'PAID' || activeOrder.status === 'PREPARING' ? 'text-amber-400 font-semibold' : 'text-zinc-400'}`}>
+                <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center ${['PAID', 'PREPARING', 'READY_FOR_PICKUP', 'DELIVERING', 'COMPLETED'].includes(activeOrder.status) ? 'bg-amber-500 shadow-md shadow-amber-500/20' : 'bg-zinc-800'}`}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-black"></span>
+                </div>
+                <span className={`text-sm ${activeOrder.status === 'PAID' || activeOrder.status === 'PREPARING' ? 'text-amber-450 font-bold' : 'text-zinc-400'}`}>
                   Kitchen Preparing your Meal
                 </span>
               </div>
               <div className="w-0.5 h-6 bg-zinc-800 ml-1.5" />
               <div className="flex items-center gap-3">
-                <div className={`w-3 h-3 rounded-full ${['READY_FOR_PICKUP', 'DELIVERING', 'COMPLETED'].includes(activeOrder.status) ? 'bg-emerald-500' : 'bg-zinc-800'}`} />
-                <span className={`text-sm ${['READY_FOR_PICKUP', 'DELIVERING', 'COMPLETED'].includes(activeOrder.status) ? 'text-emerald-400 font-semibold' : 'text-zinc-400'}`}>
+                <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center ${['READY_FOR_PICKUP', 'DELIVERING', 'COMPLETED'].includes(activeOrder.status) ? 'bg-emerald-500 shadow-md shadow-emerald-500/20' : 'bg-zinc-800'}`}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-black"></span>
+                </div>
+                <span className={`text-sm ${['READY_FOR_PICKUP', 'DELIVERING', 'COMPLETED'].includes(activeOrder.status) ? 'text-emerald-450 font-bold' : 'text-zinc-400'}`}>
                   Ready for Delivery / Pickup!
                 </span>
               </div>
@@ -643,7 +712,7 @@ export default function CustomerApp() {
                   <p className="text-[10px] text-zinc-500 font-medium">Awaiting kitchen staff to start cooking.</p>
                 </div>
               ) : (
-                <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-3 animate-bounce">
+                <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
                       <h4 className="text-sm font-bold text-amber-400">Payment Request Triggered</h4>
@@ -666,7 +735,7 @@ export default function CustomerApp() {
             {/* Post-payment Preparation */}
             {(activeOrder.status === 'PAID' || activeOrder.status === 'PREPARING') && (
               <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-center">
-                <CheckCircle size={24} className="text-emerald-500 mx-auto mb-2 animate-bounce" />
+                <CheckCircle size={24} className="text-emerald-500 mx-auto mb-2" />
                 <h4 className="text-sm font-bold text-emerald-400">
                   {activeOrder.payment_method === 'COD' ? 'Preparing Order' : 'Order Paid successfully'}
                 </h4>
@@ -702,6 +771,20 @@ export default function CustomerApp() {
               </div>
             )}
           </div>
+
+          {/* Help Support Panel */}
+          <div className="mt-4 p-4 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-between">
+            <div>
+              <h4 className="text-[11px] font-bold text-white uppercase tracking-wider">Need assistance?</h4>
+              <p className="text-[10px] text-zinc-400 mt-0.5">Call kitchen staff directly for quick updates.</p>
+            </div>
+            <a 
+              href="tel:+919876543210"
+              className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-black text-[10px] font-bold rounded-lg transition-colors flex items-center gap-1"
+            >
+              <Phone size={12} /> Call Support
+            </a>
+          </div>
         </div>
       ) : (
         /* TAB NAVIGATION SYSTEM */
@@ -732,14 +815,22 @@ export default function CustomerApp() {
                 {/* Search bar */}
                 <div className="px-5 py-2">
                   <div className="relative">
-                    <Search className="absolute left-3 top-3.5 text-zinc-500" size={16} />
+                    <Search className="absolute left-3.5 top-3.5 text-zinc-500" size={16} />
                     <input 
                       type="text" 
                       placeholder="Search favorite dishes..." 
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full bg-[#131317] border border-zinc-800/80 rounded-xl py-3 pl-10 pr-4 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-amber-500/60"
+                      className="w-full bg-[#131317] border border-zinc-800/80 rounded-xl py-3 pl-11 pr-10 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-amber-500/60 transition-all duration-200"
                     />
+                    {searchQuery && (
+                      <button 
+                        onClick={() => setSearchQuery('')}
+                        className="absolute right-3 top-3 text-zinc-400 hover:text-white p-1 rounded-full hover:bg-zinc-800/40 transition-colors"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -747,7 +838,7 @@ export default function CustomerApp() {
                 <div className="px-5 py-2 overflow-x-auto flex gap-2 no-scrollbar sticky top-[68px] bg-[#0d0d0e] z-30 pb-3">
                   <button
                     onClick={() => setSelectedCategory('all')}
-                    className={`px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-300 ${selectedCategory === 'all' ? 'bg-amber-500 text-black shadow-md shadow-amber-500/10' : 'bg-zinc-900 text-zinc-400 border border-zinc-800/40 hover:bg-zinc-800/60'}`}
+                    className={`px-5 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-350 transform active:scale-95 ${selectedCategory === 'all' ? 'bg-amber-500 text-black shadow-lg shadow-amber-500/20 scale-105' : 'bg-zinc-900 text-zinc-400 border border-zinc-800/40 hover:bg-zinc-800/60'}`}
                   >
                     All
                   </button>
@@ -755,7 +846,7 @@ export default function CustomerApp() {
                     <button
                       key={cat.id}
                       onClick={() => setSelectedCategory(cat.id)}
-                      className={`px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-300 ${selectedCategory === cat.id ? 'bg-amber-500 text-black shadow-md shadow-amber-500/10' : 'bg-zinc-900 text-zinc-400 border border-zinc-800/40 hover:bg-zinc-800/60'}`}
+                      className={`px-5 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-350 transform active:scale-95 ${selectedCategory === cat.id ? 'bg-amber-500 text-black shadow-lg shadow-amber-500/20 scale-105' : 'bg-zinc-900 text-zinc-400 border border-zinc-800/40 hover:bg-zinc-800/60'}`}
                     >
                       {cat.name}
                     </button>
@@ -768,7 +859,7 @@ export default function CustomerApp() {
                     filteredItems.map((item) => (
                       <div 
                         key={item.id}
-                        className="glass p-3.5 rounded-xl border border-zinc-800/50 flex gap-4 hover:border-zinc-700/50 transition-colors"
+                        className="glass p-3.5 rounded-xl border border-zinc-800/50 flex gap-4 hover:border-amber-500/35 hover:scale-[1.015] hover:shadow-lg transition-all duration-300"
                       >
                         <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-zinc-900">
                           <img 
@@ -782,7 +873,14 @@ export default function CustomerApp() {
                           <div>
                             <div className="flex items-start justify-between gap-1">
                               <h4 className="text-xs font-bold text-white line-clamp-1">{item.name}</h4>
-                              <span className="text-xs font-bold text-amber-500">₹{parseFloat(item.price).toFixed(2)}</span>
+                              {item.offer_price !== null && item.offer_price !== undefined ? (
+                                <div className="flex items-center gap-1.5 flex-shrink-0">
+                                  <span className="line-through text-zinc-500 text-[10px] font-normal">₹{parseFloat(item.price).toFixed(2)}</span>
+                                  <span className="text-xs font-bold text-amber-500">₹{parseFloat(item.offer_price).toFixed(2)}</span>
+                                </div>
+                              ) : (
+                                <span className="text-xs font-bold text-amber-500">₹{parseFloat(item.price).toFixed(2)}</span>
+                              )}
                             </div>
                             <p className="text-[10px] text-zinc-400 mt-1 line-clamp-2 leading-relaxed">
                               {item.description}
@@ -862,7 +960,14 @@ export default function CustomerApp() {
                           <div>
                             <h5 className="text-xs font-bold text-white">{item.menuItem.name}</h5>
                             <p className="text-[10px] text-amber-500 font-semibold mt-0.5">
-                              ₹{parseFloat(item.menuItem.price).toFixed(2)}
+                              {item.menuItem.offer_price !== null && item.menuItem.offer_price !== undefined ? (
+                                <span className="flex items-center gap-1.5">
+                                  <span className="line-through text-zinc-500 font-normal">₹{parseFloat(item.menuItem.price).toFixed(2)}</span>
+                                  <span>₹{parseFloat(item.menuItem.offer_price).toFixed(2)}</span>
+                                </span>
+                              ) : (
+                                <span>₹{parseFloat(item.menuItem.price).toFixed(2)}</span>
+                              )}
                             </p>
                           </div>
 
@@ -1035,14 +1140,13 @@ export default function CustomerApp() {
                 <div className="space-y-3">
                   <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-widest">Order History</h4>
                   
-                  {MockDatabase.getOrders().filter(o => o.customer_phone === user.phoneNumber).length === 0 ? (
+                  {ordersList.length === 0 ? (
                     <div className="text-center py-10 text-zinc-500 text-xs bg-zinc-950 border border-zinc-850 rounded-2xl">
                       No orders placed yet.
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {MockDatabase.getOrders()
-                        .filter(o => o.customer_phone === user.phoneNumber)
+                      {ordersList
                         .map((order) => (
                           <div key={order.id} className="bg-[#18181b] p-4 rounded-xl border border-zinc-850 space-y-2">
                             <div className="flex justify-between items-center">

@@ -40,7 +40,7 @@ export class MockDatabase {
     };
     
     sync();
-    const interval = setInterval(sync, 1500);
+    const interval = setInterval(sync, 300);
     return () => clearInterval(interval);
   }
 
@@ -88,7 +88,8 @@ export class MockDatabase {
         description: 'Tossed in white truffle oil, grated parmesan, and fresh parsley, served with garlic aioli.',
         price: 8.50,
         image_url: 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=600&auto=format&fit=crop&q=80',
-        is_available: true
+        is_available: true,
+        offer_price: null
       },
       {
         id: 'm2',
@@ -97,7 +98,8 @@ export class MockDatabase {
         description: 'Grilled sourdough topped with smashed avocado, cherry tomatoes, basil, and balsamic glaze.',
         price: 11.00,
         image_url: 'https://images.unsplash.com/photo-1541532713592-79a0317b6b77?w=600&auto=format&fit=crop&q=80',
-        is_available: true
+        is_available: true,
+        offer_price: null
       },
       {
         id: 'm3',
@@ -106,7 +108,8 @@ export class MockDatabase {
         description: 'Prime ribeye basted with garlic herb butter, served with roasted asparagus and garlic mash.',
         price: 32.00,
         image_url: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=600&auto=format&fit=crop&q=80',
-        is_available: true
+        is_available: true,
+        offer_price: null
       },
       {
         id: 'm4',
@@ -115,7 +118,8 @@ export class MockDatabase {
         description: 'Creamy Arborio rice with sautéed exotic mushrooms, thyme, and aged pecorino cheese.',
         price: 24.00,
         image_url: 'https://images.unsplash.com/photo-1476124369491-e7addf5db371?w=600&auto=format&fit=crop&q=80',
-        is_available: true
+        is_available: true,
+        offer_price: null
       },
       {
         id: 'm5',
@@ -124,7 +128,8 @@ export class MockDatabase {
         description: 'Premium bourbon, Angostura bitters, sugar cube, stirred with a twist of orange peel.',
         price: 14.00,
         image_url: 'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=600&auto=format&fit=crop&q=80',
-        is_available: true
+        is_available: true,
+        offer_price: null
       },
       {
         id: 'm6',
@@ -133,7 +138,8 @@ export class MockDatabase {
         description: 'Decadent warm chocolate cake with a molten center, served with vanilla bean gelato.',
         price: 9.50,
         image_url: 'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?w=600&auto=format&fit=crop&q=80',
-        is_available: true
+        is_available: true,
+        offer_price: 7.50
       }
     ]);
   }
