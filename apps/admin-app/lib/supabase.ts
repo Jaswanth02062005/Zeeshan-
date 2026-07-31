@@ -89,7 +89,10 @@ export class MockDatabase {
         price: 8.50,
         image_url: 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=600&auto=format&fit=crop&q=80',
         is_available: true,
-        offer_price: null
+        offer_price: null,
+        has_portions: true,
+        price_half: 4.99,
+        price_full: 8.50
       },
       {
         id: 'm2',
@@ -99,7 +102,10 @@ export class MockDatabase {
         price: 11.00,
         image_url: 'https://images.unsplash.com/photo-1541532713592-79a0317b6b77?w=600&auto=format&fit=crop&q=80',
         is_available: true,
-        offer_price: null
+        offer_price: null,
+        has_portions: false,
+        price_half: null,
+        price_full: null
       },
       {
         id: 'm3',
@@ -109,7 +115,10 @@ export class MockDatabase {
         price: 32.00,
         image_url: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=600&auto=format&fit=crop&q=80',
         is_available: true,
-        offer_price: null
+        offer_price: null,
+        has_portions: false,
+        price_half: null,
+        price_full: null
       },
       {
         id: 'm4',
@@ -119,7 +128,10 @@ export class MockDatabase {
         price: 24.00,
         image_url: 'https://images.unsplash.com/photo-1476124369491-e7addf5db371?w=600&auto=format&fit=crop&q=80',
         is_available: true,
-        offer_price: null
+        offer_price: null,
+        has_portions: false,
+        price_half: null,
+        price_full: null
       },
       {
         id: 'm5',
@@ -129,7 +141,10 @@ export class MockDatabase {
         price: 14.00,
         image_url: 'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=600&auto=format&fit=crop&q=80',
         is_available: true,
-        offer_price: null
+        offer_price: null,
+        has_portions: false,
+        price_half: null,
+        price_full: null
       },
       {
         id: 'm6',
@@ -139,7 +154,10 @@ export class MockDatabase {
         price: 9.50,
         image_url: 'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?w=600&auto=format&fit=crop&q=80',
         is_available: true,
-        offer_price: 7.50
+        offer_price: 7.50,
+        has_portions: false,
+        price_half: null,
+        price_full: null
       }
     ]);
   }

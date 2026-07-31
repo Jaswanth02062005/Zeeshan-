@@ -5,33 +5,37 @@
 @tailwind utilities;
 
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  --background: #09090b;
+  --foreground: #f4f4f5;
+  --accent: #f59e0b;
+  --accent-hover: #d97706;
+  --card-bg: rgba(17, 17, 19, 0.7);
+  --card-border: rgba(255, 255, 255, 0.08);
 }
 
 body {
   color: var(--foreground);
-  background-color: var(--background);
+  background-color: #020202; /* Frame surrounding the mobile layout */
   font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   overflow-x: hidden;
   scroll-behavior: smooth;
 }
 
-
+/* Premium glassmorphism effects */
 .glass {
-  background: rgba(255, 255, 255, 0.95) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
-  border: 1px solid rgba(15, 23, 42, 0.08) !important;
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.03), 0 2px 4px -2px rgb(0 0 0 / 0.03) !important;
-}
-
-.glass-dark {
-  background: rgba(255, 255, 255, 0.98) !important;
+  background: var(--card-bg) !important;
   backdrop-filter: blur(16px) !important;
   -webkit-backdrop-filter: blur(16px) !important;
-  border: 1px solid rgba(15, 23, 42, 0.05) !important;
-  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.05) !important;
+  border: 1px solid var(--card-border) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+}
+
+.glass-premium {
+  background: rgba(15, 15, 18, 0.85) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border: 1px solid rgba(245, 158, 11, 0.15) !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5) !important;
 }
 
 /* Hide scrollbar */
@@ -43,144 +47,52 @@ body {
   scrollbar-width: none;
 }
 
-/* LIGHT MODE OVERRIDES FOR HARDCODED DARK CLASSES */
-body.bg-black {
-  background-color: #cbd5e1 !important; /* Outer container frame */
+/* Glowing text and drop-shadows */
+.glow-amber {
+  text-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
 }
-.bg-\[\#0d0d0e\] {
-  background-color: #f8fafc !important;
+
+.shadow-glow {
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.15);
 }
-.text-\[\#f4f4f6\] {
-  color: #0f172a !important;
+
+/* Luxury input focus glow */
+.focus-glow-gold:focus {
+  outline: none !important;
+  border-color: rgba(245, 158, 11, 0.6) !important;
+  box-shadow: 0 0 18px rgba(245, 158, 11, 0.22) !important;
 }
-.bg-\[\#0d0d0e\]\/80 {
-  background-color: rgba(255, 255, 255, 0.9) !important;
-  border-bottom: 1px solid #e2e8f0 !important;
+
+/* Ambient backdrop glow */
+.ambient-glow {
+  background: radial-gradient(circle at 50% -10%, rgba(245, 158, 11, 0.09) 0%, transparent 60%);
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
 }
-.border-\[\#1a1a1f\] {
-  border-color: #e2e8f0 !important;
+
+.ambient-glow-bottom {
+  background: radial-gradient(circle at 50% 110%, rgba(245, 158, 11, 0.05) 0%, transparent 50%);
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
 }
-.border-x {
-  border-color: #e2e8f0 !important;
+
+/* Custom scroll bar for other scrollable areas */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
-.bg-\[\#16161b\] {
-  background-color: #ffffff !important;
-  border: 1px solid #e2e8f0 !important;
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
 }
-.bg-\[\#1c1c24\] {
-  background-color: #f1f5f9 !important;
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
 }
-.border-zinc-800, .border-zinc-850, .border-zinc-900 {
-  border-color: #e2e8f0 !important;
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
-.text-white {
-  color: #0f172a !important;
-}
-.text-zinc-200 {
-  color: #1e293b !important;
-}
-.text-zinc-300 {
-  color: #334155 !important;
-}
-.text-zinc-400 {
-  color: #475569 !important;
-}
-.text-zinc-500 {
-  color: #64748b !important;
-}
-.text-zinc-600 {
-  color: #94a3b8 !important;
-}
-.bg-zinc-900 {
-  background-color: #f1f5f9 !important;
-  border-color: #cbd5e1 !important;
-}
-.hover\:bg-zinc-800\/50:hover {
-  background-color: rgba(15, 23, 42, 0.05) !important;
-}
-input, select, textarea {
-  color: #0f172a !important;
-  background-color: #ffffff !important;
-  border-color: #cbd5e1 !important;
-}
-input::placeholder, textarea::placeholder {
-  color: #94a3b8 !important;
-}
-.bg-amber-500 {
-  background-color: #f59e0b !important;
-  color: #ffffff !important;
-}
-.bg-amber-500\/10 {
-  background-color: rgba(245, 158, 11, 0.1) !important;
-  color: #d97706 !important;
-}
-.text-amber-500 {
-  color: #d97706 !important;
-}
-.text-amber-400 {
-  color: #b45309 !important;
-}
-.bg-red-500\/10 {
-  background-color: rgba(239, 68, 68, 0.1) !important;
-}
-.border-red-500\/20 {
-  border-color: rgba(239, 68, 68, 0.2) !important;
-}
-.text-red-400 {
-  color: #dc2626 !important;
-}
-.bg-emerald-500\/10 {
-  background-color: rgba(16, 185, 129, 0.1) !important;
-}
-.border-emerald-500\/20 {
-  border-color: rgba(16, 185, 129, 0.2) !important;
-}
-.text-emerald-400 {
-  color: #059669 !important;
-}
-.bg-\[\#18181b\] {
-  background-color: #ffffff !important;
-  border: 1px solid #e2e8f0 !important;
-}
-.bg-zinc-800 {
-  background-color: #f1f5f9 !important;
-  color: #475569 !important;
-}
-.divide-zinc-850 > :not([hidden]) ~ :not([hidden]) {
-  border-color: #e2e8f0 !important;
-}
-.border-zinc-850 {
-  border-color: #e2e8f0 !important;
-}
-.bg-\[\#0d0d0e\] {
-  background-color: #f8fafc !important;
-}
-.bg-\[\#09090b\] {
-  background-color: #f8fafc !important;
-}
-.bg-emerald-500 {
-  background-color: #10b981 !important;
-  color: #ffffff !important;
-}
-.bg-emerald-500 .text-black, .bg-amber-500 .text-black {
-  color: #ffffff !important;
-}
-.text-emerald-500 {
-  color: #059669 !important;
-}
-.bg-zinc-950 {
-  background-color: #f1f5f9 !important;
-}
-.border-zinc-800 {
-  border-color: #e2e8f0 !important;
-}
-.bg-zinc-900\/80 {
-  background-color: rgba(255, 255, 255, 0.9) !important;
-}
-.text-zinc-100 {
-  color: #1e293b !important;
-}
-.bg-\[\#0c0c0e\]\/90 {
-  background-color: rgba(255, 255, 255, 0.95) !important;
-  border-color: #e2e8f0 !important;
-}
+

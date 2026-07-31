@@ -53,7 +53,10 @@ export default function AdminDashboard() {
     offer_price: '',
     category_id: '',
     image_url: '',
-    is_available: true
+    is_available: true,
+    has_portions: false,
+    price_half: '',
+    price_full: ''
   });
   const [isEditingItem, setIsEditingItem] = useState(false);
 
@@ -237,19 +240,23 @@ export default function AdminDashboard() {
     if (!itemForm.name || !itemForm.price || !itemForm.category_id) return;
     const priceNum = parseFloat(itemForm.price);
     const offerPriceNum = itemForm.offer_price ? parseFloat(itemForm.offer_price) : null;
+    const priceHalfNum = itemForm.price_half ? parseFloat(itemForm.price_half) : null;
+    const priceFullNum = itemForm.price_full ? parseFloat(itemForm.price_full) : null;
 
     if (isMockMode) {
       let updatedList = [...menuItems];
       if (isEditingItem) {
         updatedList = updatedList.map(item => 
-          item.id === itemForm.id ? { ...item, ...itemForm, price: priceNum, offer_price: offerPriceNum } : item
+          item.id === itemForm.id ? { ...item, ...itemForm, price: priceNum, offer_price: offerPriceNum, price_half: priceHalfNum, price_full: priceFullNum } : item
         );
       } else {
         const newItem = {
           ...itemForm,
           id: 'item_' + Math.random().toString(36).substr(2, 9),
           price: priceNum,
-          offer_price: offerPriceNum
+          offer_price: offerPriceNum,
+          price_half: priceHalfNum,
+          price_full: priceFullNum
         };
         updatedList.push(newItem);
       }
@@ -268,12 +275,15 @@ export default function AdminDashboard() {
               offer_price: offerPriceNum,
               category_id: itemForm.category_id,
               image_url: itemForm.image_url,
-              is_available: itemForm.is_available
+              is_available: itemForm.is_available,
+              has_portions: itemForm.has_portions,
+              price_half: priceHalfNum,
+              price_full: priceFullNum
             })
             .eq('id', itemForm.id);
           if (error) throw error;
           setMenuItems(prev => prev.map(item => 
-            item.id === itemForm.id ? { ...item, ...itemForm, price: priceNum, offer_price: offerPriceNum } : item
+            item.id === itemForm.id ? { ...item, ...itemForm, price: priceNum, offer_price: offerPriceNum, price_half: priceHalfNum, price_full: priceFullNum } : item
           ));
         } else {
           const { data, error } = await supabase
@@ -285,7 +295,10 @@ export default function AdminDashboard() {
               offer_price: offerPriceNum,
               category_id: itemForm.category_id,
               image_url: itemForm.image_url,
-              is_available: itemForm.is_available
+              is_available: itemForm.is_available,
+              has_portions: itemForm.has_portions,
+              price_half: priceHalfNum,
+              price_full: priceFullNum
             }])
             .select()
             .single();
@@ -308,7 +321,10 @@ export default function AdminDashboard() {
       offer_price: item.offer_price !== null && item.offer_price !== undefined ? item.offer_price.toString() : '',
       category_id: item.category_id,
       image_url: item.image_url || '',
-      is_available: item.is_available
+      is_available: item.is_available,
+      has_portions: item.has_portions || false,
+      price_half: item.price_half !== null && item.price_half !== undefined ? item.price_half.toString() : '',
+      price_full: item.price_full !== null && item.price_full !== undefined ? item.price_full.toString() : ''
     });
     setIsEditingItem(true);
   };
@@ -365,7 +381,10 @@ export default function AdminDashboard() {
       offer_price: '',
       category_id: categories[0]?.id || '',
       image_url: '',
-      is_available: true
+      is_available: true,
+      has_portions: false,
+      price_half: '',
+      price_full: ''
     });
     setIsEditingItem(false);
   };
@@ -765,6 +784,51 @@ export default function AdminDashboard() {
                       ))}
                     </select>
                   </div>
+                </div>
+
+                {/* Portions config */}
+                <div className="p-3 bg-zinc-950 rounded-xl border border-zinc-850 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="checkbox"
+                      id="has_portions"
+                      checked={itemForm.has_portions}
+                      onChange={(e) => setItemForm({ ...itemForm, has_portions: e.target.checked })}
+                      className="rounded border-zinc-800 bg-[#121215] text-amber-500 focus:ring-0"
+                    />
+                    <label htmlFor="has_portions" className="text-[11px] font-bold text-zinc-350 select-none cursor-pointer">
+                      This item has portion choices (Half & Full)
+                    </label>
+                  </div>
+
+                  {itemForm.has_portions && (
+                    <div className="grid grid-cols-2 gap-4 pt-1">
+                      <div>
+                        <label className="block text-[10px] font-semibold text-zinc-400 mb-1">Half Portion Price (₹)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="E.g., 250"
+                          value={itemForm.price_half}
+                          onChange={(e) => setItemForm({ ...itemForm, price_half: e.target.value })}
+                          className="w-full bg-[#121215] border border-zinc-850 rounded-xl py-2 px-3 text-xs text-white placeholder-zinc-650 focus:outline-none focus:border-amber-500/50"
+                          required={itemForm.has_portions}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-zinc-400 mb-1">Full Portion Price (₹)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="E.g., 450"
+                          value={itemForm.price_full}
+                          onChange={(e) => setItemForm({ ...itemForm, price_full: e.target.value })}
+                          className="w-full bg-[#121215] border border-zinc-850 rounded-xl py-2 px-3 text-xs text-white placeholder-zinc-650 focus:outline-none focus:border-amber-500/50"
+                          required={itemForm.has_portions}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div>
