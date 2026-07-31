@@ -4,6 +4,12 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Zeeshans | Fine Dining Restaurant",
   description: "Experience premium culinary creations and order your favorite dishes online.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Zeeshans"
+  }
 };
 
 export default function RootLayout({
