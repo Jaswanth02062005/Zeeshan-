@@ -571,8 +571,16 @@ export default function AdminDashboard() {
                       {/* Items */}
                       <div className="space-y-1 text-xs text-zinc-400">
                         {order.items.map((i: any, index: number) => (
-                          <div key={index} className="flex justify-between">
-                            <span>{i.menuItem.name} <strong className="text-zinc-200">x{i.quantity}</strong></span>
+                          <div key={index} className="flex justify-between items-start py-0.5">
+                            <div>
+                              <span>{i.menuItem.name}</span>
+                              {(i.portion || i.spice) && (
+                                <span className="text-[10px] text-amber-500 font-semibold block">
+                                  {[i.portion ? `${i.portion}` : null, i.spice ? `${i.spice} Spice` : null].filter(Boolean).join(' • ')}
+                                </span>
+                              )}
+                            </div>
+                            <strong className="text-zinc-200">x{i.quantity}</strong>
                           </div>
                         ))}
                       </div>
@@ -636,8 +644,16 @@ export default function AdminDashboard() {
 
                       <div className="space-y-1 text-xs text-zinc-400">
                         {order.items.map((i: any, index: number) => (
-                          <div key={index} className="flex justify-between">
-                            <span>{i.menuItem.name} <strong className="text-zinc-200">x{i.quantity}</strong></span>
+                          <div key={index} className="flex justify-between items-start py-0.5">
+                            <div>
+                              <span>{i.menuItem.name}</span>
+                              {(i.portion || i.spice) && (
+                                <span className="text-[10px] text-amber-500 font-semibold block">
+                                  {[i.portion ? `${i.portion}` : null, i.spice ? `${i.spice} Spice` : null].filter(Boolean).join(' • ')}
+                                </span>
+                              )}
+                            </div>
+                            <strong className="text-zinc-200">x{i.quantity}</strong>
                           </div>
                         ))}
                       </div>
@@ -1074,9 +1090,28 @@ export default function AdminDashboard() {
                         {/* Items */}
                         <div className="space-y-1.5 text-xs text-zinc-400 border-t border-zinc-200/40 pt-3">
                           {order.items.map((i: any, index: number) => (
-                            <div key={index} className="flex justify-between">
-                              <span>{i.menuItem.name} <strong className="text-zinc-200">x{i.quantity}</strong></span>
-                              <span>₹{(parseFloat(i.menuItem.price) * i.quantity).toFixed(2)}</span>
+                            <div key={index} className="flex justify-between items-start py-1">
+                              <div>
+                                <span>{i.menuItem.name}</span>
+                                {(i.portion || i.spice) && (
+                                  <span className="text-[10px] text-amber-500 font-semibold block">
+                                    {[i.portion ? `${i.portion}` : null, i.spice ? `${i.spice} Spice` : null].filter(Boolean).join(' • ')}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-right">
+                                <strong className="text-zinc-200 block">x{i.quantity}</strong>
+                                <span className="text-[10px] text-zinc-500">
+                                  ₹{(
+                                    (i.portion === 'Half' && i.menuItem.price_half !== null && i.menuItem.price_half !== undefined
+                                      ? parseFloat(i.menuItem.price_half)
+                                      : i.portion === 'Full' && i.menuItem.price_full !== null && i.menuItem.price_full !== undefined
+                                      ? parseFloat(i.menuItem.price_full)
+                                      : parseFloat(i.menuItem.price)
+                                    ) * i.quantity
+                                  ).toFixed(2)}
+                                </span>
+                              </div>
                             </div>
                           ))}
                         </div>
