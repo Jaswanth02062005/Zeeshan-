@@ -43,6 +43,7 @@ export default function CustomerApp() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [authError, setAuthError] = useState('');
+  const [initializing, setInitializing] = useState(true);
   
   // App Content State
   const [categories, setCategories] = useState<any[]>([]);
@@ -175,8 +176,10 @@ export default function CustomerApp() {
       fetchUserOrders(savedUser.phoneNumber);
     }
 
+    let authUnsubscribe: any = null;
+
     if (!isFirebaseMock && auth) {
-      const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
+      authUnsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
         if (firebaseUser) {
           setUser(firebaseUser);
           // Check address
@@ -196,8 +199,10 @@ export default function CustomerApp() {
         } else {
           setUser(null);
         }
+        setInitializing(false);
       });
-      return () => unsubscribeAuth();
+    } else {
+      setInitializing(false);
     }
 
     // Load initial mock menu items
@@ -209,6 +214,10 @@ export default function CustomerApp() {
     if (!isMockMode) {
       fetchLiveDb();
     }
+
+    return () => {
+      if (authUnsubscribe) authUnsubscribe();
+    };
   }, []);
 
   // Sync address input when accessing profile page
@@ -612,6 +621,14 @@ export default function CustomerApp() {
                           (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase()));
     return matchesCategory && matchesSearch;
   });
+
+  if (initializing) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <Loader2 className="animate-spin text-amber-500" size={32} />
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-y-auto no-scrollbar pb-24 relative bg-[#09090b]">
