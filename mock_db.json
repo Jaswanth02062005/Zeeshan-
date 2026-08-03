@@ -1,4 +1,5 @@
 {
+  "min_order_amount": 200,
   "mock_orders": [
     {
       "id": "ord_12n36veiq",
@@ -251,7 +252,7 @@
   "mock_user_activity": {
     "23434455678": {
       "name": "jashh",
-      "last_active": "2026-07-31T08:57:31.669Z",
+      "last_active": "2026-08-01T04:42:43.741Z",
       "cart": [],
       "current_tab": "home"
     }

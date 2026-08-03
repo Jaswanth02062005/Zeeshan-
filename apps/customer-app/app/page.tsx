@@ -67,6 +67,7 @@ export default function CustomerApp() {
   const [checkingOut, setCheckingOut] = useState(false);
   const [showTracking, setShowTracking] = useState(false);
   const [activeFooterTab, setActiveFooterTab] = useState<'home' | 'cart' | 'profile'>('home');
+  const [minOrderAmount, setMinOrderAmount] = useState<number>(200);
   const [showAddressSetup, setShowAddressSetup] = useState(false);
   const [nameInput, setNameInput] = useState('');
   const [addressInput, setAddressInput] = useState('');
@@ -202,6 +203,7 @@ export default function CustomerApp() {
     // Load initial mock menu items
     setCategories(MockDatabase.getCategories());
     setMenuItems(MockDatabase.getMenuItems());
+    setMinOrderAmount(MockDatabase.getMinOrderAmount());
     
     // Fetch live db if not in Mock Mode
     if (!isMockMode) {
@@ -258,6 +260,9 @@ export default function CustomerApp() {
       if (event.detail.key === 'mock_menu_items') {
         setMenuItems(event.detail.value);
       }
+      if (event.detail.key === 'min_order_amount') {
+        setMinOrderAmount(event.detail.value);
+      }
     };
     window.addEventListener('mock-db-update', listener);
     return () => window.removeEventListener('mock-db-update', listener);
@@ -295,6 +300,11 @@ export default function CustomerApp() {
       
       const { data: items } = await supabase.from('menu_items').select('*');
       if (items && items.length > 0) setMenuItems(items);
+
+      const { data: settingsData } = await supabase.from('settings').select('*').eq('key', 'min_order_amount');
+      if (settingsData && settingsData.length > 0) {
+        setMinOrderAmount(Number(settingsData[0].value));
+      }
     } catch (err) {
       console.error('Error fetching live Supabase data: ', err);
     }
@@ -515,6 +525,10 @@ export default function CustomerApp() {
   // Order Submission
   const submitOrder = async () => {
     if (cart.length === 0 || !user) return;
+    if (cartTotal < minOrderAmount) {
+      alert(`Minimum order amount is ₹${minOrderAmount.toFixed(2)}. Please add more items to your cart.`);
+      return;
+    }
     setCheckingOut(true);
 
     const savedProfiles = MockDatabase.getStorage<Record<string, { name: string; address: string }>>('mock_user_profiles', {});
@@ -1225,6 +1239,13 @@ export default function CustomerApp() {
                   </div>
                 ) : (
                   <>
+                    {/* Minimum Order amount constraint warning */}
+                    {cartTotal < minOrderAmount && (
+                      <div className="p-3.5 bg-red-500/10 border border-red-500/35 rounded-xl flex items-center justify-between text-[11px] font-bold text-red-400">
+                        <span>⚠️ Minimum order amount is ₹{minOrderAmount.toFixed(0)}. Add ₹{(minOrderAmount - cartTotal).toFixed(2)} more to place order.</span>
+                      </div>
+                    )}
+
                     {/* Free Delivery Goal Tracker */}
                     {cartTotal < 500 ? (
                       <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-xl space-y-2">
@@ -1424,8 +1445,8 @@ export default function CustomerApp() {
 
                       <button
                         onClick={submitOrder}
-                        disabled={checkingOut}
-                        className="w-full bg-amber-500 hover:bg-amber-600 disabled:bg-zinc-800 disabled:text-zinc-600 text-black font-bold py-3.5 rounded-xl text-xs transition-colors flex items-center justify-center gap-2"
+                        disabled={checkingOut || cartTotal < minOrderAmount}
+                        className="w-full bg-amber-500 hover:bg-amber-600 disabled:bg-zinc-900 disabled:text-zinc-650 text-black font-bold py-3.5 rounded-xl text-xs transition-colors flex items-center justify-center gap-2"
                       >
                         {checkingOut && <Loader2 size={14} className="animate-spin" />}
                         Confirm and Place Order (₹{cartTotal.toFixed(2)})

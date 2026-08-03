@@ -20,7 +20,8 @@ import {
   Volume2,
   VolumeX,
   Play,
-  Loader2
+  Loader2,
+  Settings
 } from 'lucide-react';
 import { isMockMode, MockDatabase, supabase } from '../lib/supabase';
 
@@ -29,7 +30,7 @@ export default function AdminDashboard() {
   
   // Authentication & Navigation
   const [authenticated, setAuthenticated] = useState(false);
-  const [activeTab, setActiveTab] = useState<'orders' | 'menu' | 'categories' | 'all-orders' | 'users'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'menu' | 'categories' | 'all-orders' | 'users' | 'settings'>('orders');
   const [selectedLogDate, setSelectedLogDate] = useState(() => {
     const today = new Date();
     return today.toISOString().split('T')[0];
@@ -38,6 +39,8 @@ export default function AdminDashboard() {
   // Categories & Menu Items State
   const [categories, setCategories] = useState<any[]>([]);
   const [menuItems, setMenuItems] = useState<any[]>([]);
+  const [minOrderAmount, setMinOrderAmount] = useState<number>(200);
+  const [minOrderInput, setMinOrderInput] = useState<string>('200');
   
   // Live Orders State
   const [orders, setOrders] = useState<any[]>([]);
@@ -76,6 +79,9 @@ export default function AdminDashboard() {
     setCategories(MockDatabase.getCategories());
     setMenuItems(MockDatabase.getMenuItems());
     setOrders(MockDatabase.getOrders());
+    const amt = MockDatabase.getMinOrderAmount();
+    setMinOrderAmount(amt);
+    setMinOrderInput(amt.toString());
 
     if (!isMockMode) {
       fetchLiveDb();
@@ -93,6 +99,10 @@ export default function AdminDashboard() {
       if (event.detail.key === 'mock_menu_items') {
         setMenuItems(event.detail.value);
       }
+      if (event.detail.key === 'min_order_amount') {
+        setMinOrderAmount(event.detail.value);
+        setMinOrderInput(event.detail.value.toString());
+      }
     };
     window.addEventListener('mock-db-update', listener);
     return () => window.removeEventListener('mock-db-update', listener);
@@ -108,6 +118,13 @@ export default function AdminDashboard() {
 
       const { data: ords } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
       if (ords) setOrders(ords);
+
+      const { data: settingsData } = await supabase.from('settings').select('*').eq('key', 'min_order_amount');
+      if (settingsData && settingsData.length > 0) {
+        const val = Number(settingsData[0].value);
+        setMinOrderAmount(val);
+        setMinOrderInput(val.toString());
+      }
     } catch (err) {
       console.error(err);
     }
@@ -434,6 +451,32 @@ export default function AdminDashboard() {
     router.push('/admin/login');
   };
 
+  const handleSaveSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const amount = parseFloat(minOrderInput);
+    if (isNaN(amount) || amount < 0) {
+      alert('Please enter a valid positive number for minimum order amount');
+      return;
+    }
+    
+    if (isMockMode) {
+      MockDatabase.saveMinOrderAmount(amount);
+      setMinOrderAmount(amount);
+      alert('Settings updated successfully in mock database!');
+    } else {
+      try {
+        const { error } = await supabase
+          .from('settings')
+          .upsert({ key: 'min_order_amount', value: amount }, { onConflict: 'key' });
+        if (error) throw error;
+        setMinOrderAmount(amount);
+        alert('Settings updated successfully in database!');
+      } catch (err: any) {
+        alert('Error updating settings: ' + err.message);
+      }
+    }
+  };
+
   if (!authenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black">
@@ -519,10 +562,18 @@ export default function AdminDashboard() {
 
         <button
           onClick={() => setActiveTab('users')}
-          className={`py-4 text-xs font-bold uppercase tracking-wider relative transition-colors ${activeTab === 'users' ? 'text-amber-500' : 'text-zinc-500 hover:text-zinc-300'}`}
+          className={`py-4 text-xs font-bold uppercase tracking-wider relative transition-colors ${activeTab === 'users' ? 'text-amber-500' : 'text-zinc-550 hover:text-zinc-300'}`}
         >
           Users & Carts
           {activeTab === 'users' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-amber-500" />}
+        </button>
+
+        <button
+          onClick={() => setActiveTab('settings')}
+          className={`py-4 text-xs font-bold uppercase tracking-wider relative transition-colors ${activeTab === 'settings' ? 'text-amber-500' : 'text-zinc-550 hover:text-zinc-300'}`}
+        >
+          Settings
+          {activeTab === 'settings' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-amber-500" />}
         </button>
       </div>
 
@@ -1245,6 +1296,47 @@ export default function AdminDashboard() {
                   </div>
                 );
               })()}
+            </div>
+          </div>
+        )}
+
+        {/* SETTINGS VIEW */}
+        {activeTab === 'settings' && (
+          <div className="max-w-md mx-auto space-y-6">
+            <div className="glass p-6 rounded-2xl border border-zinc-800 space-y-6">
+              <div>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-amber-500 flex items-center gap-2">
+                  <Settings size={16} /> Restaurant Settings
+                </h3>
+                <p className="text-xs text-zinc-550 mt-1">Configure global pricing thresholds and ordering rules.</p>
+              </div>
+
+              <form onSubmit={handleSaveSettings} className="space-y-4">
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-widest text-zinc-400 mb-1.5">
+                    Minimum Order Amount (₹)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={minOrderInput}
+                    onChange={(e) => setMinOrderInput(e.target.value)}
+                    placeholder="200"
+                    className="w-full bg-[#121215] border border-zinc-850 rounded-xl py-3 px-4 text-sm text-white placeholder-zinc-700 focus:outline-none focus:border-amber-500/50 transition-all font-semibold"
+                  />
+                  <p className="text-[10px] text-zinc-550 mt-1.5 leading-relaxed">
+                    Customers will be blocked from checking out if their subtotal is below this amount.
+                  </p>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full bg-amber-500 hover:bg-amber-600 text-black text-xs font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-amber-500/10 active:scale-95 duration-200"
+                >
+                  Save Settings
+                </button>
+              </form>
             </div>
           </div>
         )}

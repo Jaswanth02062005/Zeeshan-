@@ -181,6 +181,14 @@ export class MockDatabase {
     this.setStorage('mock_orders', orders);
   }
 
+  static getMinOrderAmount(): number {
+    return this.getStorage('min_order_amount', 200);
+  }
+
+  static saveMinOrderAmount(amount: number) {
+    this.setStorage('min_order_amount', amount);
+  }
+
   static subscribeToOrders(callback: (orders: any[]) => void) {
     const listener = (event: any) => {
       if (event.detail.key === 'mock_orders') {
